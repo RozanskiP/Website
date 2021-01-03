@@ -1,0 +1,378 @@
+<!DOCTYPE html> 
+<html> 
+
+<head>
+    <title>ML</title>
+
+    <meta charset="utf-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <style>
+        div.area { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+    } 
+      
+    input.area { 
+        margin-top: 10px; 
+    } 
+      
+    textarea.area { 
+        margin-top: 15px; 
+        width: 70%; 
+    }
+    </style>
+    <!-- Skrypt do pobierania pliku w  -->
+    <script>
+
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+      // Start file download.
+        function downloadclick(){
+          // Generate download of hello.txt file with some content
+          console.log("W downloadclick");
+          console.log(linesX);
+          var text = linesX;
+          text.push('\n');
+          text.push(linesY);
+
+          var filename = document.getElementById("filename").value;
+          
+          download(filename, text);
+        }
+    </script>
+
+</head>
+
+<!-- Napis ktory jest na stale na poczatku strony -->
+<div class="w3-container">
+  <h2>Normalizing</h2>
+
+  <!-- Menu wybierania -->
+  <div class="w3-row">
+    <a href="javascript:void(0)" onclick="openCity(event, 'Upload');">
+      <div class="w3-third tablink w3-bottombar w3-hover-light-grey w3-padding">Upload file</div>
+    </a>
+    <a href="javascript:void(0)" onclick="openCity(event, 'Normalize');">
+      <div class="w3-third tablink w3-bottombar w3-hover-light-grey w3-padding">Normalize</div>
+    </a>
+    <a href="javascript:void(0)" onclick="openCity(event, 'Download');">
+      <div class="w3-third tablink w3-bottombar w3-hover-light-grey w3-padding">Download</div>
+    </a>
+  </div>
+
+<!-- Czesc strony wysylania pliku -->
+  <div id="Upload" class="w3-container city" style="display:none">
+    <h2>Upload file</h2>
+    <p>Save 2 columns in Excel in .csv </p>
+    <center> 
+        <h1 style="color: green;"> 
+            Table
+        </h1> 
+        <div class="area"> 
+            <!-- <input type="file" class="area">  -->
+            <input type="file" id="csvFileInput" onchange="handleFiles(this.files)"
+          accept=".csv">
+            <!-- <textarea class="area" cols="30" rows="20" 
+                      placeholder="text will appear here"> 
+            </textarea>  -->
+            <div id="output">
+        </div> 
+    </center> 
+    <script>
+        var linesX=[];
+        var linesY=[];
+        var lines=[];
+
+        function splitArray(lines){
+            console.log(lines);
+            for(var i = 0; i < lines.length-1; i++){
+                //console.log("POCZATEK: ");
+                //console.log(lines[i][0]);
+                linesX[i] = parseFloat(lines[i][0]);
+                //console.log(lines[i][1]);
+                linesY[i] = parseFloat(lines[i][1]);
+            }
+            //console.log("Dzialam po petli");
+            console.log(linesX);
+            console.log(linesY);
+        }
+
+        function handleFiles(files) {
+            // Check for the various File API support.
+            if (window.FileReader) {
+                // FileReader are supported.
+                getAsText(files[0]);
+            } else {
+                alert('FileReader are not supported in this browser.');
+            }
+        }
+
+        function getAsText(fileToRead) {
+            var reader = new FileReader();
+            // Handle errors load
+            reader.onload = loadHandler;
+            reader.onerror = errorHandler;
+            // Read file into memory as UTF-8      
+            reader.readAsText(fileToRead);
+        }
+
+        function loadHandler(event) {
+            var csv = event.target.result;
+            processData(csv);             
+        }
+
+        function processData(csv) {
+            var allTextLines = csv.split(/\r\n|\n/);
+            var lines = [];
+            while (allTextLines.length) {
+                lines.push(allTextLines.shift().split(';'));
+            }
+            console.log(lines);
+            drawOutput(lines);
+            // podziel funckje na 2 tablice
+            console.log("Dzialam funckje");
+            splitArray(lines);
+        }
+
+        //if your csv file contains the column names as the first line
+        function processDataAsObj(csv){
+            var allTextLines = csv.split(/\r\n|\n/);
+            
+            //first line of csv
+            var keys = allTextLines.shift().split(',');
+            
+            while (allTextLines.length) {
+                var arr = allTextLines.shift().split(',');
+                var obj = {};
+                for(var i = 0; i < keys.length; i++){
+                    obj[keys[i]] = arr[i];
+            }
+                lines.push(obj);
+            }
+                console.log(lines);
+            drawOutputAsObj(lines);
+        }
+
+        function errorHandler(evt) {
+            if(evt.target.error.name == "NotReadableError") {
+                alert("Canno't read file !");
+            }
+        }
+
+        function drawOutput(lines){
+            //Clear previous data
+            document.getElementById("output").innerHTML = "";
+            var table = document.createElement("table");
+            for (var i = 0; i < lines.length; i++) {
+                var row = table.insertRow(-1);
+                for (var j = 0; j < lines[i].length; j++) {
+                    var firstNameCell = row.insertCell(-1);
+                    firstNameCell.appendChild(document.createTextNode(lines[i][j]));
+                }
+            }
+            document.getElementById("output").appendChild(table);
+        }
+
+        //draw the table, if first line contains heading
+        function drawOutputAsObj(lines){
+            //Clear previous data
+            document.getElementById("output").innerHTML = "";
+            var table = document.createElement("table");
+            
+            //for the table headings
+            var tableHeader = table.insertRow(-1);
+            Object.keys(lines[0]).forEach(function(key){
+                var el = document.createElement("TH");
+                el.innerHTML = key;     
+                tableHeader.appendChild(el);
+            }); 
+            
+            //the data
+            for (var i = 0; i < lines.length; i++) {
+                var row = table.insertRow(-1);
+                Object.keys(lines[0]).forEach(function(key){
+                    var data = row.insertCell(-1);
+                    data.appendChild(document.createTextNode(lines[i][key]));
+                });
+            }
+            document.getElementById("output").appendChild(table);
+        }
+
+        // let input = document.querySelector('input')
+
+        // let textarea = document.querySelector('textarea')
+
+        // input.addEventListener('change', () => {
+        //     let files = input.files;
+
+        //     if(files.length == 0)
+        //         return;
+
+        //     const file = files[0];
+
+        //     let reader = new FileReader();
+
+        //     reader.readAsText(file);
+
+            // reader.onload = (e) => {
+            //     const file = e.target.result;
+
+            //     const linessplited = file.split(/\r\n|\n/);
+            //     var lines = [];
+            //     for(var i=0; i < linessplited.length; i++){
+            //         var data = linessplited[i].split(';');
+            //             var tarr = [];
+            //             for(var j=0; j<data.length; j++){
+            //                 tarr.push(data[i]);
+            //             }
+            //         lines.push(tarr);
+            //     }
+            //     console.log(lines);
+            //     textarea.value = lines;
+            // };
+
+        //     textarea.value = lines.join('\n');
+        //     reader.onerror = (e) => alert(e.target.error.name);
+
+        // });
+    </script> 
+  </div>
+
+<!-- Czesc strony rysowania wykresu i normalizacji -->
+  <div id="Normalize" class="w3-container city" style="display:none">
+    <h2>Normalize</h2>
+    <p>...</p> 
+    <button onclick="plot()">PLOT</button>
+    <div id="myPlot"></div>
+
+    <script type="text/javascript">
+    function plot(){
+
+            trace1 = {
+                x: linesX,
+                y: linesY,
+                mode: 'line',
+                yaxis: 'y2',
+                name: 'Loaded',
+                hoverinfo: 'none'
+            };
+
+            trace2 = {
+                x: linesX,
+                y: linesY,
+                mode: 'line',
+                yaxis: 'y2',
+                name: 'Continuum',
+                hoverinfo: 'none'
+            };
+
+            trace3 = {
+                x: linesX,
+                y: linesY,
+                mode: 'line',
+                yaxis: 'y2',
+                name: 'Smoothed continuum' ,
+                hoverinfo: 'none'
+            };
+
+            trace4 = {
+                x: linesX,
+                y: linesY,
+                mode: 'line',
+                yaxis: 'y1',
+                name: 'Normed flux',
+                hoverinfo: 'none'
+            };
+
+            var layout = {
+            yaxis: {
+              domain: [0, 0.4],
+              title: 'Flux',
+              fixedrange: true
+            },
+            yaxis2: {
+              domain: [0.45, 1.0],
+              title: 'Flux'
+            },
+            xaxis:{
+              title: 'Wavelength [A]',
+              showline: true,
+              nticks: 10, //liczba wysiwtlonych wartosci na osi x
+              tickfont:{
+                size: 10
+              },
+              tickformat: '.2f',
+            },
+            xaxis2:{
+              title: 'Normed spectrum',
+              scaleratio: 2,
+              position: 1,
+              side: 'top',
+              range: [0, 15],
+              visible: true,   
+              showline: true,
+              showgrid: false,
+              tickformat: '.2f',
+            },
+            };
+
+            config =  {
+                responsive: true
+            }
+
+            style={ width: '100%', height: '100%' }
+
+            var data = [trace1, trace2, trace3, trace4];
+
+            Plotly.newPlot('myPlot', data, layout, config, style);
+        }
+    </script>
+
+  </div>
+
+<!-- Czesc strony pobierania przetworzonego pliku -->
+  <div id="Download" class="w3-container city" style="display:none">
+    <h2>Download</h2>
+    <p>Enter filename here: </p>
+
+    <input type="text" id="filename" value="hello.txt"/>
+    <br/><br/><br/>
+    <input onclick="downloadclick()" type="button" id="dwn-btn" value="Download dinamically generated text file"/>
+
+  </div>
+</div>
+
+<!-- Przelaczanie stron -->
+<script>
+function openCity(evt, cityName) {
+  var i, x, tablinks;
+  x = document.getElementsByClassName("city");
+  for (i = 0; i < x.length; i++) {
+    x[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablink");
+  for (i = 0; i < x.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" w3-border-red", "");
+  }
+  document.getElementById(cityName).style.display = "block";
+  evt.currentTarget.firstElementChild.className += " w3-border-red";
+}
+</script>
+
+</body>
+</html> 
