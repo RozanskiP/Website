@@ -25,36 +25,6 @@
         width: 70%; 
     }
     </style>
-    <!-- Skrypt do pobierania pliku w  -->
-    <script>
-
-        function download(filename, text) {
-            var element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-            element.setAttribute('download', filename);
-
-            element.style.display = 'none';
-            document.body.appendChild(element);
-
-            element.click();
-
-            document.body.removeChild(element);
-        }
-
-      // Start file download.
-        function downloadclick(){
-          // Generate download of hello.txt file with some content
-          console.log("W downloadclick");
-          console.log(linesX);
-          var text = linesX;
-          text.push('\n');
-          text.push(linesY);
-
-          var filename = document.getElementById("filename").value;
-          
-          download(filename, text);
-        }
-    </script>
 
 </head>
 
@@ -257,10 +227,21 @@
   <div id="Normalize" class="w3-container city" style="display:none">
     <h2>Normalize</h2>
     <p>...</p> 
+
+    <button onclick="normalize()">Normalize</button>
+    <br></br>
     <button onclick="plot()">PLOT</button>
+
     <div id="myPlot"></div>
 
+
     <script type="text/javascript">
+
+    function normalize(x){
+            return x.map((value, index, array) => Math.pow(value,2));
+        }
+
+
     function plot(){
 
             trace1 = {
@@ -283,7 +264,7 @@
 
             trace3 = {
                 x: linesX,
-                y: linesY,
+                y: normalize(linesY),
                 mode: 'line',
                 yaxis: 'y2',
                 name: 'Smoothed continuum' ,
@@ -353,6 +334,37 @@
     <input type="text" id="filename" value="hello.txt"/>
     <br/><br/><br/>
     <input onclick="downloadclick()" type="button" id="dwn-btn" value="Download dinamically generated text file"/>
+
+    <!-- Skrypt do pobierania pliku w  -->
+    <script>
+
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+      // Start file download.
+        function downloadclick(){
+          // Generate download of hello.txt file with some content
+          console.log("W downloadclick");
+          console.log(linesX);
+          var text = linesX;
+          text.push('\n');
+          text.push(linesY);
+
+          var filename = document.getElementById("filename").value;
+          
+          download(filename, text);
+        }
+    </script>
 
   </div>
 </div>
