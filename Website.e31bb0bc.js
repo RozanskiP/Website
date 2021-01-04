@@ -36876,7 +36876,7 @@ exports.IMAGENET_CLASSES = void 0;
  * limitations under the License.
  * =============================================================================
  */
-var IMAGENET_CLASSES = {
+const IMAGENET_CLASSES = {
   0: 'tench, Tinca tinca',
   1: 'goldfish, Carassius auratus',
   2: 'great white shark, white shark, man-eater, man-eating shark, ' + 'Carcharodon carcharias',
@@ -37893,73 +37893,84 @@ var _imagenet_classes = require("./imagenet_classes");
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
-function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
-
-function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
-
-var MOBILENET_MODEL_PATH = // tslint:disable-next-line:max-line-length
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+const MOBILENET_MODEL_PATH = // tslint:disable-next-line:max-line-length
 'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json';
-var IMAGE_SIZE = 224;
-var TOPK_PREDICTIONS = 10;
-var mobilenet;
+const IMAGE_SIZE = 224;
+const TOPK_PREDICTIONS = 10;
+let mobilenet;
 
-var mobilenetDemo =
-/*#__PURE__*/
-function () {
-  var _ref = _asyncToGenerator(
-  /*#__PURE__*/
-  regeneratorRuntime.mark(function _callee() {
-    var catElement;
-    return regeneratorRuntime.wrap(function _callee$(_context) {
-      while (1) {
-        switch (_context.prev = _context.next) {
-          case 0:
-            status('Loading model...');
-            _context.next = 3;
-            return tf.loadLayersModel(MOBILENET_MODEL_PATH);
+const mobilenetDemo = async () => {
+  status('Loading model...');
+  mobilenet = await tf.loadLayersModel(MOBILENET_MODEL_PATH); // Warmup the model. This isn't necessary, but makes the first prediction
+  // faster. Call `dispose` to release the WebGL memory allocated for the return
+  // value of `predict`.
 
-          case 3:
-            mobilenet = _context.sent;
-            // Warmup the model. This isn't necessary, but makes the first prediction
-            // faster. Call `dispose` to release the WebGL memory allocated for the return
-            // value of `predict`.
-            mobilenet.predict(tf.zeros([1, IMAGE_SIZE, IMAGE_SIZE, 3])).dispose();
-            status(''); // Make a prediction through the locally hosted cat.jpg.
+  mobilenet.predict(tf.zeros([1, IMAGE_SIZE, IMAGE_SIZE, 3])).dispose();
+  status(''); // Make a prediction through the locally hosted cat.jpg.
 
-            catElement = document.getElementById('cat');
+  const catElement = document.getElementById('cat');
 
-            if (catElement.complete && catElement.naturalHeight !== 0) {
-              predict(catElement);
-              catElement.style.display = '';
-            } else {
-              catElement.onload = function () {
-                predict(catElement);
-                catElement.style.display = '';
-              };
-            }
+  if (catElement.complete && catElement.naturalHeight !== 0) {
+    predict(catElement);
+    catElement.style.display = '';
+  } else {
+    catElement.onload = () => {
+      predict(catElement);
+      catElement.style.display = '';
+    };
+  }
 
-            document.getElementById('file-container').style.display = '';
-
-          case 9:
-          case "end":
-            return _context.stop();
-        }
-      }
-    }, _callee, this);
-  }));
-
-  return function mobilenetDemo() {
-    return _ref.apply(this, arguments);
-  };
-}();
+  document.getElementById('file-container').style.display = '';
+};
 /**
  * Given an image element, makes a prediction through mobilenet returning the
  * probabilities of the top K classes.
  */
 
 
-function predict(_x) {
-  return _predict.apply(this, arguments);
+async function predict(imgElement) {
+  status('Predicting...'); // The first start time includes the time it takes to extract the image
+  // from the HTML and preprocess it, in additon to the predict() call.
+
+  const startTime1 = performance.now(); // The second start time excludes the extraction and preprocessing and
+  // includes only the predict() call.
+
+  let startTime2;
+  const logits = tf.tidy(() => {
+    // tf.browser.fromPixels() returns a Tensor from an image element.
+    const img = tf.browser.fromPixels(imgElement).toFloat();
+    const offset = tf.scalar(127.5); // Normalize the image from [0, 255] to [-1, 1].
+
+    const normalized = img.sub(offset).div(offset); // Reshape to a single-element batch so we can pass it to predict.
+
+    const batched = normalized.reshape([1, IMAGE_SIZE, IMAGE_SIZE, 3]);
+    startTime2 = performance.now(); // Make a prediction through mobilenet.
+
+    return mobilenet.predict(batched);
+  }); // Convert logits to probabilities and class names.
+
+  const classes = await getTopKClasses(logits, TOPK_PREDICTIONS);
+  const totalTime1 = performance.now() - startTime1;
+  const totalTime2 = performance.now() - startTime2;
+  status(`Done in ${Math.floor(totalTime1)} ms ` + `(not including preprocessing: ${Math.floor(totalTime2)} ms)`); // Show the classes in the DOM.
+
+  showResults(imgElement, classes);
 }
 /**
  * Computes the probabilities of the topK classes given logits by computing
@@ -37969,134 +37980,59 @@ function predict(_x) {
  */
 
 
-function _predict() {
-  _predict = _asyncToGenerator(
-  /*#__PURE__*/
-  regeneratorRuntime.mark(function _callee2(imgElement) {
-    var startTime1, startTime2, logits, classes, totalTime1, totalTime2;
-    return regeneratorRuntime.wrap(function _callee2$(_context2) {
-      while (1) {
-        switch (_context2.prev = _context2.next) {
-          case 0:
-            status('Predicting...'); // The first start time includes the time it takes to extract the image
-            // from the HTML and preprocess it, in additon to the predict() call.
+async function getTopKClasses(logits, topK) {
+  const values = await logits.data();
+  const valuesAndIndices = [];
 
-            startTime1 = performance.now(); // The second start time excludes the extraction and preprocessing and
-            // includes only the predict() call.
+  for (let i = 0; i < values.length; i++) {
+    valuesAndIndices.push({
+      value: values[i],
+      index: i
+    });
+  }
 
-            logits = tf.tidy(function () {
-              // tf.browser.fromPixels() returns a Tensor from an image element.
-              var img = tf.browser.fromPixels(imgElement).toFloat();
-              var offset = tf.scalar(127.5); // Normalize the image from [0, 255] to [-1, 1].
+  valuesAndIndices.sort((a, b) => {
+    return b.value - a.value;
+  });
+  const topkValues = new Float32Array(topK);
+  const topkIndices = new Int32Array(topK);
 
-              var normalized = img.sub(offset).div(offset); // Reshape to a single-element batch so we can pass it to predict.
+  for (let i = 0; i < topK; i++) {
+    topkValues[i] = valuesAndIndices[i].value;
+    topkIndices[i] = valuesAndIndices[i].index;
+  }
 
-              var batched = normalized.reshape([1, IMAGE_SIZE, IMAGE_SIZE, 3]);
-              startTime2 = performance.now(); // Make a prediction through mobilenet.
+  const topClassesAndProbs = [];
 
-              return mobilenet.predict(batched);
-            }); // Convert logits to probabilities and class names.
+  for (let i = 0; i < topkIndices.length; i++) {
+    topClassesAndProbs.push({
+      className: _imagenet_classes.IMAGENET_CLASSES[topkIndices[i]],
+      probability: topkValues[i]
+    });
+  }
 
-            _context2.next = 5;
-            return getTopKClasses(logits, TOPK_PREDICTIONS);
-
-          case 5:
-            classes = _context2.sent;
-            totalTime1 = performance.now() - startTime1;
-            totalTime2 = performance.now() - startTime2;
-            status("Done in ".concat(Math.floor(totalTime1), " ms ") + "(not including preprocessing: ".concat(Math.floor(totalTime2), " ms)")); // Show the classes in the DOM.
-
-            showResults(imgElement, classes);
-
-          case 10:
-          case "end":
-            return _context2.stop();
-        }
-      }
-    }, _callee2, this);
-  }));
-  return _predict.apply(this, arguments);
-}
-
-function getTopKClasses(_x2, _x3) {
-  return _getTopKClasses.apply(this, arguments);
+  return topClassesAndProbs;
 } //
 // UI
 //
 
 
-function _getTopKClasses() {
-  _getTopKClasses = _asyncToGenerator(
-  /*#__PURE__*/
-  regeneratorRuntime.mark(function _callee3(logits, topK) {
-    var values, valuesAndIndices, i, topkValues, topkIndices, _i, topClassesAndProbs, _i2;
-
-    return regeneratorRuntime.wrap(function _callee3$(_context3) {
-      while (1) {
-        switch (_context3.prev = _context3.next) {
-          case 0:
-            _context3.next = 2;
-            return logits.data();
-
-          case 2:
-            values = _context3.sent;
-            valuesAndIndices = [];
-
-            for (i = 0; i < values.length; i++) {
-              valuesAndIndices.push({
-                value: values[i],
-                index: i
-              });
-            }
-
-            valuesAndIndices.sort(function (a, b) {
-              return b.value - a.value;
-            });
-            topkValues = new Float32Array(topK);
-            topkIndices = new Int32Array(topK);
-
-            for (_i = 0; _i < topK; _i++) {
-              topkValues[_i] = valuesAndIndices[_i].value;
-              topkIndices[_i] = valuesAndIndices[_i].index;
-            }
-
-            topClassesAndProbs = [];
-
-            for (_i2 = 0; _i2 < topkIndices.length; _i2++) {
-              topClassesAndProbs.push({
-                className: _imagenet_classes.IMAGENET_CLASSES[topkIndices[_i2]],
-                probability: topkValues[_i2]
-              });
-            }
-
-            return _context3.abrupt("return", topClassesAndProbs);
-
-          case 12:
-          case "end":
-            return _context3.stop();
-        }
-      }
-    }, _callee3, this);
-  }));
-  return _getTopKClasses.apply(this, arguments);
-}
-
 function showResults(imgElement, classes) {
-  var predictionContainer = document.createElement('div');
+  const predictionContainer = document.createElement('div');
   predictionContainer.className = 'pred-container';
-  var imgContainer = document.createElement('div');
+  const imgContainer = document.createElement('div');
   imgContainer.appendChild(imgElement);
   predictionContainer.appendChild(imgContainer);
-  var probsContainer = document.createElement('div');
+  const probsContainer = document.createElement('div');
 
-  for (var i = 0; i < classes.length; i++) {
-    var row = document.createElement('div');
+  for (let i = 0; i < classes.length; i++) {
+    const row = document.createElement('div');
     row.className = 'row';
-    var classElement = document.createElement('div');
+    const classElement = document.createElement('div');
     classElement.className = 'cell';
     classElement.innerText = classes[i].className;
     row.appendChild(classElement);
-    var probsElement = document.createElement('div');
+    const probsElement = document.createElement('div');
     probsElement.className = 'cell';
     probsElement.innerText = classes[i].probability.toFixed(3);
     row.appendChild(probsElement);
@@ -38107,41 +38043,37 @@ function showResults(imgElement, classes) {
   predictionsElement.insertBefore(predictionContainer, predictionsElement.firstChild);
 }
 
-var filesElement = document.getElementById('files');
-filesElement.addEventListener('change', function (evt) {
-  var files = evt.target.files; // Display thumbnails & issue call to predict each image.
+const filesElement = document.getElementById('files');
+filesElement.addEventListener('change', evt => {
+  let files = evt.target.files; // Display thumbnails & issue call to predict each image.
 
-  for (var i = 0, f; f = files[i]; i++) {
+  for (let i = 0, f; f = files[i]; i++) {
     // Only process image files (skip non image files)
     if (!f.type.match('image.*')) {
       continue;
     }
 
-    var reader = new FileReader();
+    let reader = new FileReader();
 
-    reader.onload = function (e) {
+    reader.onload = e => {
       // Fill the image & call predict.
-      var img = document.createElement('img');
+      let img = document.createElement('img');
       img.src = e.target.result;
       img.width = IMAGE_SIZE;
       img.height = IMAGE_SIZE;
 
-      img.onload = function () {
-        return predict(img);
-      };
+      img.onload = () => predict(img);
     }; // Read in the image file as a data URL.
 
 
     reader.readAsDataURL(f);
   }
 });
-var demoStatusElement = document.getElementById('status');
+const demoStatusElement = document.getElementById('status');
 
-var status = function status(msg) {
-  return demoStatusElement.innerText = msg;
-};
+const status = msg => demoStatusElement.innerText = msg;
 
-var predictionsElement = document.getElementById('predictions');
+const predictionsElement = document.getElementById('predictions');
 mobilenetDemo();
 },{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js","./imagenet_classes":"imagenet_classes.js"}]},{},["index.js"], null)
 //# sourceMappingURL=/Website.e31bb0bc.map
