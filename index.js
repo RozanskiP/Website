@@ -17,11 +17,11 @@
 
 import * as tf from '@tensorflow/tfjs';
 
-import {IMAGENET_CLASSES} from './imagenet_classes';
+import { IMAGENET_CLASSES } from './imagenet_classes';
 
 const MOBILENET_MODEL_PATH =
-    // tslint:disable-next-line:max-line-length
-    'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json';
+  // tslint:disable-next-line:max-line-length
+  'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json';
 
 const IMAGE_SIZE = 224;
 const TOPK_PREDICTIONS = 10;
@@ -88,7 +88,7 @@ async function predict(imgElement) {
   const totalTime1 = performance.now() - startTime1;
   const totalTime2 = performance.now() - startTime2;
   status(`Done in ${Math.floor(totalTime1)} ms ` +
-      `(not including preprocessing: ${Math.floor(totalTime2)} ms)`);
+    `(not including preprocessing: ${Math.floor(totalTime2)} ms)`);
 
   // Show the classes in the DOM.
   showResults(imgElement, classes);
@@ -105,7 +105,7 @@ export async function getTopKClasses(logits, topK) {
 
   const valuesAndIndices = [];
   for (let i = 0; i < values.length; i++) {
-    valuesAndIndices.push({value: values[i], index: i});
+    valuesAndIndices.push({ value: values[i], index: i });
   }
   valuesAndIndices.sort((a, b) => {
     return b.value - a.value;
@@ -159,7 +159,7 @@ function showResults(imgElement, classes) {
   predictionContainer.appendChild(probsContainer);
 
   predictionsElement.insertBefore(
-      predictionContainer, predictionsElement.firstChild);
+    predictionContainer, predictionsElement.firstChild);
 }
 
 const filesElement = document.getElementById('files');
